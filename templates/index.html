@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adivina Quién Minecraft</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; background: #121212; color: #f1f1f1; }
+        .page { max-width: 1200px; margin: auto; padding: 20px; }
+        header { text-align: center; padding: 20px 0; }
+        header h1 { margin: 0; font-size: 2.4rem; color: #7cc576; }
+        .buttons { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+        .buttons button { padding: 14px 24px; font-size: 1rem; border: none; border-radius: 12px; cursor: pointer; }
+        .buttons button:hover { opacity: 0.95; }
+        button.primary { background: #4caf50; color: #fff; }
+        button.secondary { background: #2196f3; color: #fff; }
+        button.warning { background: #f57c00; color: #fff; }
+        button.danger { background: #e53935; color: #fff; }
+        .panel { display: none; gap: 20px; }
+        .panel.active { display: grid; }
+        .panel-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }
+        .box { background: #1e1e1e; border: 1px solid #333; border-radius: 18px; padding: 20px; }
+        .box h2 { margin-top: 0; }
+        .image-box { text-align: center; }
+        .image-box img { max-width: 100%; border-radius: 20px; border: 1px solid #333; background: #111; }
+        .status { margin: 12px 0; font-size: 1rem; line-height: 1.6; }
+        .field { width: 100%; padding: 12px 14px; border: 1px solid #333; border-radius: 12px; background: #111; color: #f1f1f1; }
+        .field select { width: 100%; }
+        .field input { width: 100%; }
+        .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+        .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; max-height: 340px; overflow-y: auto; padding-top: 10px; }
+        .card { background: #111; border: 1px solid #333; border-radius: 16px; padding: 10px; text-align: center; cursor: pointer; transition: transform 0.12s ease, border-color 0.12s ease; }
+        .card:hover { transform: translateY(-2px); border-color: #7cc576; }
+        .card img { width: 100%; height: 110px; object-fit: contain; border-radius: 14px; background: #000; }
+        .card-name { margin-top: 10px; font-size: 0.92rem; line-height: 1.3; }
+        .hidden { display: none; }
+        footer { text-align: center; margin-top: 24px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header>
+            <h1>Adivina Quién Minecraft</h1>
+            <p>La misma lógica del juego, ahora en tu navegador con imágenes de la carpeta <strong>Assets/images</strong>.</p>
+        </header>
+
+        <div class="buttons">
+            <button class="primary" onclick="startMode('machine')">La máquina adivina</button>
+            <button class="secondary" onclick="startMode('human')">El humano adivina</button>
+        </div>
+
+        <div id="machinePanel" class="panel active">
+            <div class="box">
+                <h2>Modo Máquina</h2>
+                <p class="status" id="machineMessage">Selecciona un modo para iniciar una partida.</p>
+                <div id="machineQuestionArea" class="hidden">
+                    <div class="field">
+                        <strong>Pregunta / Adivinanza:</strong>
+                        <p id="machineQuestion"></p>
+                    </div>
+                    <div class="actions">
+                        <button class="primary" onclick="submitAnswer(true)">Sí</button>
+                        <button class="danger" onclick="submitAnswer(false)">No</button>
+                        <button class="warning" onclick="resetGame()">Reiniciar</button>
+                    </div>
+                </div>
+                <div class="status" id="machineCount"></div>
+            </div>
+            <div class="box image-box">
+                <h2>Imagen del bloque</h2>
+                <img id="machineImage" src="/assets/images/canUse_unknown.png" alt="Imagen del bloque" />
+            </div>
+            <div class="box">
+                <h2>Bloques posibles</h2>
+                <div id="machineGallery" class="gallery"></div>
+            </div>
+        </div>
+
+        <div id="humanPanel" class="panel">
+            <div class="box panel-grid">
+                <div>
+                    <h2>Modo Humano</h2>
+                    <p class="status" id="humanMessage">Selecciona el modo humano para iniciar.</p>
+                    <div class="field">
+                        <label for="attributeSelect"><strong>Selecciona atributo:</strong></label>
+                        <select id="attributeSelect"></select>
+                    </div>
+                    <div class="actions">
+                        <button class="primary" onclick="askAttribute()">Preguntar</button>
+                        <button class="warning" onclick="showPossible()">Mostrar posibles</button>
+                        <button class="danger" onclick="resetGame()">Reiniciar</button>
+                    </div>
+                    <div class="field" style="margin-top: 16px;">
+                        <label for="guessInput"><strong>Adivinar bloque:</strong></label>
+                        <input id="guessInput" type="text" placeholder="Escribe el nombre del bloque" />
+                    </div>
+                    <div class="actions">
+                        <button class="secondary" onclick="guessBlock()">Adivinar</button>
+                    </div>
+                </div>
+                <div class="image-box">
+                    <h2>Bloque probable</h2>
+                    <img id="humanImage" src="/assets/images/canUse_unknown.png" alt="Imagen probable" />
+                </div>
+            </div>
+            <div class="box">
+                <h2>Bloques posibles</h2>
+                <p class="status">Haz clic en una imagen para seleccionar ese bloque como tu intento.</p>
+                <div id="humanGallery" class="gallery"></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Ejecuta <code>python main.py</code> y el juego abrirá tu navegador en <strong>http://127.0.0.1:8000</strong>.</p>
+        </footer>
+    </div>
+
+    <script>
+        let currentState = null;
+        let currentMode = null;
+
+        function showPanel(panelId) {
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            document.getElementById(panelId).classList.add('active');
+        }
+
+        function startMode(mode) {
+            currentMode = mode;
+            fetch(`/api/start?mode=${mode}`)
+                .then(res => res.json())
+                .then(data => {
+                    currentState = data.stateId;
+                    if (mode === 'machine') {
+                        showPanel('machinePanel');
+                        updateMachinePanel(data);
+                    } else {
+                        showPanel('humanPanel');
+                        updateHumanPanel(data);
+                    }
+                })
+                .catch(err => alert('Error al iniciar el juego: ' + err));
+        }
+
+        function updateMachinePanel(data) {
+            document.getElementById('machineMessage').textContent = data.message || '';
+            document.getElementById('machineCount').textContent = data.possibleCount ? `Bloques posibles: ${data.possibleCount}` : '';
+            document.getElementById('machineQuestionArea').classList.toggle('hidden', !data.question && !data.guess);
+            document.getElementById('machineQuestion').textContent = data.question || data.guess || '';
+            const image = document.getElementById('machineImage');
+            image.src = data.imageUrl || '/assets/images/canUse_unknown.png';
+            renderBlockGallery('machineGallery', data.possibleBlocks || []);
+        }
+
+        function renderBlockGallery(containerId, blocks, clickable = false) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            if (!blocks || blocks.length === 0) {
+                container.innerHTML = '<p style="color:#aaa;">No hay bloques disponibles.</p>';
+                return;
+            }
+            blocks.forEach(block => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                if (clickable) {
+                    card.onclick = () => selectBlock(block.name);
+                }
+                const img = document.createElement('img');
+                img.src = block.imageUrl || '/assets/images/canUse_unknown.png';
+                img.alt = block.name;
+                const name = document.createElement('div');
+                name.className = 'card-name';
+                name.textContent = block.name;
+                card.appendChild(img);
+                card.appendChild(name);
+                container.appendChild(card);
+            });
+        }
+
+        function selectBlock(name) {
+            document.getElementById('guessInput').value = name;
+            document.getElementById('humanMessage').textContent = `Bloque seleccionado: ${name}`;
+        }
+
+        function submitAnswer(value) {
+            if (!currentState || currentMode !== 'machine') return;
+            fetch('/api/respond', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state_id: currentState, answer: value }),
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    currentState = currentState;
+                    if (data.correct) {
+                        document.getElementById('machineMessage').textContent = data.message;
+                        document.getElementById('machineQuestionArea').classList.add('hidden');
+                    } else {
+                        updateMachinePanel(data);
+                    }
+                })
+                .catch(err => alert('Error al responder: ' + err));
+        }
+
+        function updateHumanPanel(data) {
+            document.getElementById('humanMessage').textContent = data.message || '';
+            const select = document.getElementById('attributeSelect');
+            if (data.attributes) {
+                select.innerHTML = '';
+                data.attributes.forEach(attr => {
+                    const option = document.createElement('option');
+                    option.value = attr.id;
+                    option.textContent = `${attr.id}: ${attr.pregunta}`;
+                    select.appendChild(option);
+                });
+            }
+            const image = document.getElementById('humanImage');
+            image.src = data.imageUrl || '/assets/images/canUse_unknown.png';
+            renderBlockGallery('humanGallery', data.possibleBlocks || [], true);
+        }
+
+        function askAttribute() {
+            const select = document.getElementById('attributeSelect');
+            if (!select.value) {
+                alert('Selecciona un atributo.');
+                return;
+            }
+            fetch('/api/human/question', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state_id: currentState, attribute_id: select.value }),
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    const message = data.message || '';
+                    document.getElementById('humanMessage').textContent = message;
+                    if (data.probableBlock) {
+                        document.getElementById('humanMessage').textContent += ` Bloque probable: ${data.probableBlock}`;
+                    }
+                    if (data.imageUrl) {
+                        document.getElementById('humanImage').src = data.imageUrl;
+                    }
+                    renderBlockGallery('humanGallery', data.possibleBlocks || [], true);
+                })
+                .catch(err => alert('Error al preguntar atributo: ' + err));
+        }
+
+        function guessBlock() {
+            const guessInput = document.getElementById('guessInput');
+            const guess = guessInput.value.trim();
+            if (!guess) {
+                alert('Escribe el nombre del bloque para adivinarlo.');
+                return;
+            }
+            fetch('/api/human/guess', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state_id: currentState, guess }),
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    document.getElementById('humanMessage').textContent = data.message;
+                    if (data.imageUrl) {
+                        document.getElementById('humanImage').src = data.imageUrl;
+                    }
+                    renderBlockGallery('humanGallery', data.possibleBlocks || [], true);
+                })
+                .catch(err => alert('Error al adivinar: ' + err));
+        }
+
+        function showPossible() {
+            fetch(`/api/possible?state_id=${currentState}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    alert(`Bloques posibles (${data.possibleCount}):\n${data.possible.join('\n')}`);
+                })
+                .catch(err => alert('Error al obtener bloques posibles: ' + err));
+        }
+
+        function resetGame() {
+            currentState = null;
+            currentMode = null;
+            document.getElementById('machineQuestionArea').classList.add('hidden');
+            document.getElementById('machineMessage').textContent = 'Selecciona un modo para iniciar una partida.';
+            document.getElementById('humanMessage').textContent = 'Selecciona el modo humano para iniciar.';
+            document.getElementById('machineImage').src = '/assets/images/canUse_unknown.png';
+            document.getElementById('humanImage').src = '/assets/images/canUse_unknown.png';
+            document.getElementById('attributeSelect').innerHTML = '';
+            document.getElementById('guessInput').value = '';
+        }
+    </script>
+</body>
+</html>
